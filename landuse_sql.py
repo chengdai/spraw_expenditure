@@ -19,10 +19,8 @@ c = conn.cursor()
 
 #Convert each .csv file into a SQL database
 #Iterate through all .csv file, convert each file into a Pandas DataFrame and then insert into SQL schema
-for f in [files[0]]:
+for f in files:
 	print f
 	raw_dataset = pandas.read_csv(f, index_col = 0)
 	print raw_dataset
 	raw_dataset.to_sql(table_names[f],conn)
-
-#TODO: Apply Primary Key constraint on OBJECTID
