@@ -80,8 +80,9 @@ def format_gis_data(file):
 	muniid_data = agg_muni_data.join(muni_gridid_data).fillna(0)
 
 	#Create 2 new CSV files
-	gridid_data.to_csv('gridid_'+file[-13:-4]+'.csv')
-	muniid_data.to_csv('muniid_'+file[-13:-4]+'.csv')
+	#gridid_data.to_csv('gridid_'+file[-13:-4]+'.csv')
+	#muniid_data.to_csv('muniid_'+file[-13:-4]+'.csv')
+	
 	print "Conversion Done"
 
 	return gridid_data, muniid_data
@@ -90,7 +91,7 @@ def get_cbd_data(cbd_file):
 	data = pandas.read_csv(cbd_file)
 
 	#Extract muni name and lat/long of the town, rename fields, and set index to the town ID
-	return data.loc[:,['city_or_town','Latitude','Longitude']].rename(columns={'Latitude':'CBD_Lat','Longitude':'CBD_Long'}).set_index(data['MMAID']-10000)
+	return data.loc[:,['muni','lat','long']].rename(columns={'muni': 'Municipality','lat':'CBD_Lat','long':'CBD_Long'}).set_index(data['id'])
 
 def local_proximity(file):
 	grid, muni = format_gis_data(file)
@@ -206,6 +207,7 @@ def global_proximity(file):
 def centrality(file, cbd_file):
 
 	grid, muni = format_gis_data(file)
+
 	cbd = get_cbd_data(cbd_file)
 
 	print 'Calculating Centrality for: ' + str(file[-13:-4])
@@ -299,8 +301,6 @@ class sprawlThread (threading.Thread):
 
 def main():
 	print files	
-	for file in files:
-		format_gis_data(file)
 
 #	thread_1 = sprawlThread(1, files[0])
 #	thread_2 = sprawlThread(2, files[1])
