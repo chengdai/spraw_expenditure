@@ -46,17 +46,17 @@ def format_gis_data(file):
 
 	#Add in farmland
 	reclass_data_farmland = raw_data.copy(deep=True)
-	farm_grid_data = pandas.pivot_table(reclass_data_farmland, index = 'OBJECTID_1',columns = landuse_field, aggfunc=numpy.sum)[[('AREA',1),('AREA',2)]].fillna(0)
-	farm_muni_data = pandas.pivot_table(reclass_data_farmland, index = 'TOWN_ID',columns = landuse_field, aggfunc=numpy.sum)[[('AREA',1),('AREA',2)]].fillna(0)
+	farm_grid_data = pandas.pivot_table(reclass_data_farmland, index = 'OBJECTID_1',columns = landuse_field, aggfunc=numpy.sum)[[('AREA',1),('AREA',2)]]
+	farm_muni_data = pandas.pivot_table(reclass_data_farmland, index = 'TOWN_ID',columns = landuse_field, aggfunc=numpy.sum)[[('AREA',1),('AREA',2)]]
 
 	#Create a table storing the total amount of each land use type in a grid (via OBJECTID) 
-	agg_grid_data = pandas.pivot_table(reclass_data, index = 'OBJECTID_1',columns = landuse_field, aggfunc=numpy.sum)[['AREA']].fillna(0)
+	agg_grid_data = pandas.pivot_table(reclass_data, index = 'OBJECTID_1',columns = landuse_field, aggfunc=numpy.sum)[['AREA']]
 	agg_grid_data = agg_developable(agg_grid_data)
 	agg_grid_data = agg_residential(agg_grid_data,50)
 	agg_grid_data = agg_grid_data.join(farm_grid_data).sortlevel(axis=1)
 
 	#Create a table storing the total amount of each land use type in a municipality (via FIPS code)
-	agg_muni_data = pandas.pivot_table(reclass_data, index = 'TOWN_ID',columns = landuse_field, aggfunc=numpy.sum)[['AREA']].fillna(0)
+	agg_muni_data = pandas.pivot_table(reclass_data, index = 'TOWN_ID',columns = landuse_field, aggfunc=numpy.sum)[['AREA']]
 	agg_muni_data = agg_developable(agg_muni_data)
 	agg_muni_data = agg_residential(agg_muni_data,50)
 	agg_muni_data = agg_muni_data.join(farm_muni_data).sortlevel(axis=1)
@@ -70,14 +70,14 @@ def format_gis_data(file):
 	grid_fips_data = grid_fips_data.rename(columns={'TOWN_ID':('TOWN_ID','TOWN_ID'),'Longitude':('Longitude','Longitude'),'Latitude':('Latitude','Latitude')})
 
 	#Create final Grid ID table by join FIPS code data to grid land use table
-	gridid_data = agg_grid_data.join(grid_fips_data).fillna(0)
+	gridid_data = agg_grid_data.join(grid_fips_data)
 
 	#Create a table to keep track of Grid ID's that are part of the municipality's FIPS code
 	muni_gridid_data = muni_data.groupby('TOWN_ID')['OBJECTID_1'].unique()
 	muni_gridid_data.name = ('OBJECTID_1','OBJECTID_1')
 
 	#Create final FIPS ID table by joining Grid ID's to land use table
-	muniid_data = agg_muni_data.join(muni_gridid_data).fillna(0)
+	muniid_data = agg_muni_data.join(muni_gridid_data)
 
 	#Create 2 new CSV files
 	#gridid_data.to_csv('gridid_'+file[-13:-4]+'.csv')
@@ -95,10 +95,11 @@ def get_cbd_data(cbd_file):
 
 def local_proximity(file):
 	grid, muni = format_gis_data(file)
+	muni = muni.loc[:10,]
 
 	print 'Calculating Local Proximity for: ' + str(file[-13:-4])
 
-	#Create an dictionary to store all of the local proximity data:
+	#Create an dictionary to store all of the local proximity data
 	local_prox = {}
 	grid_area = grid.loc[:,'AREA']
 	lu_codes = grid_area.columns.values
@@ -106,11 +107,14 @@ def local_proximity(file):
 	#Iterate through all rows where municipality is TownID of the grid and row is the information
 	for municipality, row in muni.iterrows():
 		print municipality
+
+		#Initialize all initial landuse local proximity to be None
+		#None is preserved for a pair of landuse type if one or more the landuse type(s) is missing
 		ij_pairs = [(i,j) for i in lu_codes for j in lu_codes]
-		local_prox[municipality] = dict.fromkeys(ij_pairs, 0)
+		local_prox[municipality] = dict.fromkeys(ij_pairs, None)
 
 		for m_grid in row['OBJECTID_1']['OBJECTID_1']: #For every grid in the municipality
-			t_m = grid.loc[:,'DEVELOPABLE'].loc[m_grid, 'BY_AREA'] #Set t_m to the total deveopable area
+			t_m = grid.loc[:,'DEVELOPABLE'].loc[m_grid, 'BY_AREA'] #Set t_m to the total deveopable and potentially developable area
 			
 			#Iterate through all landuse codes (10,11,12,13,15,16,50)
 			for landuse1 in lu_codes:
@@ -119,23 +123,32 @@ def local_proximity(file):
 				
 				#Iterate through all landuse j (10,11,12,13,15,16,50) for pair (i,j)
 				for landuse2 in lu_codes: 
-					j_m = grid_area.loc[m_grid][landuse2]
-					#print municipality, (landuse1, landuse2), i_m, I, j_m, t_m
-					#print (i_m/I)*(j_m/t_m)
-					if I != 0 and t_m != 0:
-						local_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/t_m)
+					j_m = grid_area.loc[m_grid][landuse2] #Set j_m to be the amount of landuse j in cell m
+
+					#Check for any non-finite (nan or infinite) numbers to exclude from calculation
+					if I != 0 and t_m != 0 and numpy.isfinite(I) and numpy.isfinite(t_m) and numpy.isfinite(i_m) and numpy.isfinite(j_m):
+						#If this is the first time the calculation is performed on this pair, change None to float. If not, add onto existing value
+						if local_prox[municipality][(landuse1,landuse2)] == None:
+							local_prox[municipality][(landuse1,landuse2)] = (i_m/I)*(j_m/t_m)
+						else:
+							local_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/t_m)
 
 		for ij_pair in local_prox[municipality].keys():
 			I = row.loc[('AREA',ij_pair[0])]
 			J = row.loc[('AREA',ij_pair[1])]
 			T = muni.loc[:,'DEVELOPABLE'].loc[municipality, 'BY_AREA']
-			if ij_pair[0] == ij_pair[1]:
+
+			#Adjust for Composition and Assymmetry: Adjust for overall composition of municipality
+			#Results from adjusted measures should be bound by 0 and 1
+			if ij_pair[0] == ij_pair[1] and local_prox[municipality][ij_pair] != None:
 				local_prox[municipality][ij_pair] = (local_prox[municipality][ij_pair]-(I/T))/(1-I/T)
 			else:
-				if I+J != 0 and J != 0:
+				if I+J != 0 and J != 0 and numpy.isfinite(I+J) and numpy.isfinite(J) and local_prox[municipality][ij_pair] != None:
 					local_prox[municipality][ij_pair] = local_prox[municipality][ij_pair]/(J/(I+J))
+
 	local_prox_table = pandas.DataFrame.from_dict(local_prox, orient = 'index').sortlevel(axis=1)
 	local_prox_table.to_csv('Local_Prox_'+file[-13:-4]+'.csv')
+
 	return local_prox_table
 
 
@@ -160,7 +173,7 @@ def global_proximity(file):
 		#Initialize an empty dictionary to keep track of all the global proximity results
 		grids = row['OBJECTID_1']['OBJECTID_1']
 		ij_pairs = [(i,j) for i in lu_codes for j in lu_codes]
-		global_prox[municipality] = dict.fromkeys(ij_pairs, 0)
+		global_prox[municipality] = dict.fromkeys(ij_pairs, None)
 
 		#Initialize the calculations for w_x
 		w_x = 0
@@ -191,12 +204,15 @@ def global_proximity(file):
 							j_m = grid_area.loc[m_grid][landuse2]
 							J = row.loc[('AREA',landuse2)]
 
-							if J != 0 and I != 0:
-								global_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/J) * dist_dict[(m_grid,k_grid)]
+							if I != 0 and J != 0 and numpy.isfinite(I) and numpy.isfinite(J) and numpy.isfinite(i_m) and numpy.isfinite(j_m):
+								if global_prox[municipality][(landuse1,landuse2)] == None:
+									global_prox[municipality][(landuse1,landuse2)] = (i_m/I)*(j_m/J) * dist_dict[(m_grid,k_grid)]
+								else:
+									global_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/J) * dist_dict[(m_grid,k_grid)]
 
 		#Make adjustments with average distance
 		for ij_pair in global_prox[municipality].keys():
-			if global_prox[municipality][ij_pair]!= 0:
+			if global_prox[municipality][ij_pair] != 0 and global_prox[municipality][ij_pair] != None:
 				global_prox[municipality][ij_pair] = (w_x/global_prox[municipality][ij_pair]) - 1
 
 
@@ -226,7 +242,7 @@ def centrality(file, cbd_file):
 	for municipality, row in muni.iterrows():
 		print municipality
 
-		cent[municipality] = dict.fromkeys(lu_codes,0)
+		cent[municipality] = dict.fromkeys(lu_codes,None)
 
 		municipality_lat = muni_lat[municipality]
 		municipality_long = muni_long[municipality]
@@ -244,11 +260,14 @@ def centrality(file, cbd_file):
 				i_m = grid_area[landuse][m_grid]
 				I = row['AREA'][landuse]
 
-				if I != 0:
-					cent[municipality][landuse] += (i_m/I)*distance
+				if I != 0 and numpy.isfinite(i_m) and numpy.isfinite(I):
+					if cent[municipality][landuse] == None:
+						cent[municipality][landuse] = (i_m/I)*distance
+					else:
+						cent[municipality][landuse] += (i_m/I)*distance
 
 		for landuse in cent[municipality].keys():
-			if cent[municipality][landuse] != 0:
+			if cent[municipality][landuse] != 0 and cent[municipality][landuse] != None:
 				cent[municipality][landuse] = (w/cent[municipality][landuse]) - 1
 
 	centrality_table = pandas.DataFrame.from_dict(cent, orient = 'index').sortlevel(axis=1)
@@ -268,7 +287,7 @@ def concentration(file):
 	for municipality, row in muni.iterrows():
 		print municipality
 
-		delta[municipality] = dict.fromkeys(lu_codes,0)
+		delta[municipality] = dict.fromkeys(lu_codes, None)
 
 		T = muni.loc[:,'DEVELOPABLE'].loc[municipality, 'BY_AREA']
 
@@ -279,8 +298,12 @@ def concentration(file):
 				i_m = grid_area[landuse][m_grid]
 				I = row['AREA'][landuse]
 
-				if I != 0 and T != 0:
-					delta[municipality][landuse] += 0.5 * (i_m/I - t_m/T)
+				if I != 0 and T != 0 and numpy.isfinite(i_m) and numpy.isfinite(t_m) and numpy.isfinite(I) and numpy.isfinite(T):
+					if delta[municipality][landuse] == None:
+						delta[municipality][landuse] = 0.5 * (i_m/I - t_m/T)
+					else:
+						delta[municipality][landuse] += 0.5 * (i_m/I - t_m/T)
+
 	concentration_table = pandas.DataFrame.from_dict(delta, orient = 'index').sortlevel(axis=1)
 	concentration_table.to_csv('Concentration_'+file[-13:-4]+'.csv')
 	return concentration_table
@@ -302,7 +325,7 @@ class sprawlThread (threading.Thread):
 def main():
 	print files	
 
-#	thread_1 = sprawlThread(1, files[0])
+	thread_1 = sprawlThread(1, files[0])
 #	thread_2 = sprawlThread(2, files[1])
 #	thread_3 = sprawlThread(3, files[2])
 #	thread_4 = sprawlThread(4, files[3])
@@ -311,7 +334,7 @@ def main():
 #	thread_7 = sprawlThread(7, files[6])
 #	thread_8 = sprawlThread(8, files[7])
 
-#	thread_1.start()	
+	thread_1.start()	
 #	thread_2.start()
 #	thread_3.start()
 #	thread_4.start()
