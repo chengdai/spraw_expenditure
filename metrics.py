@@ -2,12 +2,10 @@ import pandas
 import numpy
 import sys
 import glob
-import os
 import geopy.distance
 import math
 import threading
 
-current_dir = os.getcwd()
 files = [f for f in glob.glob("*.csv") if 'LandUseApprox_' in f[0:14]]
 fields = ['AREA']
 landuse_codes = [10,11,12,13,15,16,50,75]
