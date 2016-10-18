@@ -95,7 +95,6 @@ def get_cbd_data(cbd_file):
 
 def local_proximity(file):
 	grid, muni = format_gis_data(file)
-	muni = muni.loc[:10,]
 
 	print 'Calculating Local Proximity for: ' + str(file[-13:-4])
 
@@ -326,22 +325,22 @@ def main():
 	print files	
 
 	thread_1 = sprawlThread(1, files[0])
-#	thread_2 = sprawlThread(2, files[1])
-#	thread_3 = sprawlThread(3, files[2])
-#	thread_4 = sprawlThread(4, files[3])
-#	thread_5 = sprawlThread(5, files[4])
-#	thread_6 = sprawlThread(6, files[5])
-#	thread_7 = sprawlThread(7, files[6])
-#	thread_8 = sprawlThread(8, files[7])
+	thread_2 = sprawlThread(2, files[1])
+	thread_3 = sprawlThread(3, files[2])
+	thread_4 = sprawlThread(4, files[3])
+	thread_5 = sprawlThread(5, files[4])
+	thread_6 = sprawlThread(6, files[5])
+	thread_7 = sprawlThread(7, files[6])
+	thread_8 = sprawlThread(8, files[7])
 
 	thread_1.start()	
-#	thread_2.start()
-#	thread_3.start()
-#	thread_4.start()
-#	thread_5.start()
-#	thread_6.start()
-#	thread_7.start()
-#	thread_8.start()
+	thread_2.start()
+	thread_3.start()
+	thread_4.start()
+	thread_5.start()
+	thread_6.start()
+	thread_7.start()
+	thread_8.start()
 	
 if __name__=='__main__':
     main()
