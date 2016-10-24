@@ -1,9 +1,7 @@
 import pandas
 import numpy
-import sys
 import glob
 import geopy.distance
-import math
 import threading
 
 files = [f for f in glob.glob("*.csv") if 'LandUseApprox_' in f[0:14]]

@@ -1,19 +1,97 @@
+import sqlite3
 import pandas
 import numpy
-import sys
 import glob
-import os
-import geopy.distance
-import math
-import threading
 
-files = [f for f in glob.glob("*.csv") if 'Dissolve_MuniIntersect_' in f]
+files = [f for f in glob.glob("*.csv") if 'Dissolve_' in f[0:14]]
+gis_field = {'1971':'LANDUSE_Slope_Clip_LU21_1971','1985':'LANDUSE_Slope_Clip_LU37_1985','1999':'LANDUSE_Slope_Clip_LU37_1999','2005':'LandUse2005_Slope_Clip_LUCODE'}
+landuse_codes = [10,11,12,13,15,16]
 
-gis_fields_1971 = 
+'''
+class Fragmentation(object):
+	
+	gis_field = {'1971':'LANDUSE_Slope_Clip_LU21_1971','1985':'LANDUSE_Slope_Clip_LU37_1985','1999':'LANDUSE_Slope_Clip_LU37_1999','2005':'LandUse2005_Slope_Clip_LUCODE'}
+	landuse_codes = [10,11,12,13,15,16]
 
+	def __init__(self, file):
+		self.year = file[-8:-4]
+		self.land_use_feature = gis_field[file[-8:-4]]
 
-#def format_raw_data(file):
+'''
 
-#Import csv file
-raw_data = pandas.read_csv(file)
+def mean_patch_size(file):
+	#Import parcel data from csv file
+	parcel_data = pandas.read_csv(file)
+	year = file[-8:-4]
 
+	#Extract only parcels that are 1) characterized by the target landuse codes for that particular & 2) developable
+	developable_parcels = parcel_data[(parcel_data[gis_field[year]].isin(landuse_codes)) & (parcel_data['MassGIS_Dev_Undev_LU_Ref_Not_Dev'] != 1)]
+
+	#Create a table mapping each municipality to the parcels that are located in the municipality
+	muni_parcel_map = developable_parcels.groupby('TOWN_ID')['OBJECTID'].unique()
+	developable_parcels.set_index(['OBJECTID'], inplace = True)
+
+	#Initiate a empty dictionary to store the mean patch sizes
+	mean_patch_sizes = {}
+
+	#Iterate through each municipality
+	for muni, parcel_list in muni_parcel_map.iteritems():
+		print muni 
+
+		#Create a dictionary that keeps track of patches, where keys are land use codes and the values are lists of the area for each patch
+		patch_sizes = {code:[] for code in landuse_codes} 
+
+		for parcel_id in parcel_list:
+			
+			#Store the area of each patch by landuse in the patch_sizes dictionary
+			landuse_code, area = developable_parcels.loc[parcel_id][[gis_field[year],'Shape_Area']]
+			patch_sizes[landuse_code].append(area)
+
+		#Store all mean patch sizes for each land use type in a nested dictionary within the mean_patch_sizes dictionary, indexed by municipality id
+		#For the nested dictioanry, land use codes are the keys and values are the calculated mean patch size
+		mean_patch_sizes[muni] = {}
+
+		#Calculate the mean patch size for each land use in the municipality
+		for land_use in patch_sizes.keys():
+
+			#Sum of all area of patches i with land use k, or a_(i,k)
+			sum_of_patches = sum(patch_sizes[land_use])
+
+			#Total number of patches with land use k, n_k
+			number_of_patches = len(patch_sizes[land_use])
+
+			#Mean patch size for the land use k
+			if len(patch_sizes[land_use]) != 0:
+				mean_patch_sizes[muni][land_use] = sum_of_patches/number_of_patches
+			else:
+				mean_patch_sizes[muni][land_use] = None
+
+	mean_patch_size_table = pandas.DataFrame.from_dict(mean_patch_sizes, orient = 'index').sortlevel(axis=1)
+	print mean_patch_size_table.describe()
+	#mean_patch_size_table.to_csv('Mean_patch_size_' + year + '.csv')
+
+	#return mean_patch_size_table
+
+def mean_perimeter_to_area(file):
+	#Import parcel data from csv file
+	parcel_data = pandas.read_csv(file)
+	year = file[-8:-4]
+
+	#Extract only parcels that are 1) characterized by the target landuse codes for that particular & 2) developable
+	developable_parcels = parcel_data[(parcel_data[gis_field[year]].isin(landuse_codes)) & (parcel_data['MassGIS_Dev_Undev_LU_Ref_Not_Dev'] != 1)]
+
+	#Create a table mapping each municipality to the parcels that are located in the municipality
+	muni_parcel_map = developable_parcels.groupby('TOWN_ID')['OBJECTID'].unique()
+	developable_parcels.set_index(['OBJECTID'], inplace = True)
+
+	perimeter_to_area = {}
+
+	for muni, parcel_list in muni_parcel_map.iteritems():
+		print muni
+
+		
+
+'''
+for file in files:
+	mean_patch_size(file)
+'''
