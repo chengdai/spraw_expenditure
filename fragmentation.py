@@ -61,14 +61,13 @@ def mean_patch_size(file):
 			number_of_patches = len(patch_sizes[land_use])
 
 			#Mean patch size for the land use k
-			if len(patch_sizes[land_use]) != 0:
+			if number_of_patches != 0:
 				mean_patch_sizes[muni][land_use] = sum_of_patches/number_of_patches
 			else:
 				mean_patch_sizes[muni][land_use] = None
 
 	mean_patch_size_table = pandas.DataFrame.from_dict(mean_patch_sizes, orient = 'index').sortlevel(axis=1)
-	print mean_patch_size_table.describe()
-	#mean_patch_size_table.to_csv('Mean_patch_size_' + year + '.csv')
+	#mean_patch_size_table.to_csv('Mean_Patch_Size_' + year + '.csv')
 
 	#return mean_patch_size_table
 
@@ -89,9 +88,41 @@ def mean_perimeter_to_area(file):
 	for muni, parcel_list in muni_parcel_map.iteritems():
 		print muni
 
-		
+		perimeter_area_ratios = {code:[] for code in landuse_codes}
 
-'''
-for file in files:
-	mean_patch_size(file)
-'''
+		for parcel_id in parcel_list:
+			landuse_code, perimeter, area = developable_parcels.loc[parcel_id][[gis_field[year],'Shape_Length','Shape_Area']]
+
+			if area != 0:
+				perimeter_area_ratios[landuse_code].append(perimeter/area)
+
+		perimeter_to_area[muni] = {}
+
+		for land_use in perimeter_area_ratios.keys():
+
+			sum_of_ratios = sum(perimeter_area_ratios[land_use])
+
+			number_of_ratios = len(perimeter_area_ratios[land_use])
+
+			if number_of_ratios != 0:
+				perimeter_to_area[muni][land_use] = sum_of_ratios/number_of_ratios
+			else:
+				perimeter_to_area[muni][land_use] = None
+
+	perimeter_to_area_table = pandas.DataFrame.from_dict(perimeter_to_area, orient = 'index').sortlevel(axis=1)
+	perimeter_to_area_table.to_csv('Mean_Perimeter_to_Area' + year + '.csv')
+
+	print perimeter_to_area_table
+	return perimeter_to_area_table
+
+def descriptives(file):
+	data = pandas.read_csv(file, index_col = 0)
+	descriptive = data.describe()
+	print descriptive
+	descriptive.to_csv(file[:-8] + 'descriptive_' + file[-8:-4] + '.csv')
+
+
+
+#for file in files:
+	#mean_patch_size(file)
+	#mean_perimeter_to_area(file)
