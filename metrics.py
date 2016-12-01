@@ -120,13 +120,12 @@ def local_proximity(file):
 				for landuse2 in lu_codes: 
 					j_m = grid_area.loc[m_grid][landuse2] #Set j_m to be the amount of landuse j in cell m
 
+					if numpy.isfinite(i_m) and local_prox[municipality][(landuse1,landuse2)] == None:
+						local_prox[municipality][(landuse1,landuse2)] = 0
+
 					#Check for any non-finite (nan or infinite) numbers to exclude from calculation
 					if I != 0 and t_m != 0 and numpy.isfinite(I) and numpy.isfinite(t_m) and numpy.isfinite(i_m) and numpy.isfinite(j_m):
-						#If this is the first time the calculation is performed on this pair, change None to float. If not, add onto existing value
-						if local_prox[municipality][(landuse1,landuse2)] == None:
-							local_prox[municipality][(landuse1,landuse2)] = (i_m/I)*(j_m/t_m)
-						else:
-							local_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/t_m)
+						local_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/t_m)
 
 		for ij_pair in local_prox[municipality].keys():
 			I = row.loc[('AREA',ij_pair[0])]
