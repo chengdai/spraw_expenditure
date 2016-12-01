@@ -196,14 +196,14 @@ def global_proximity(file):
 
 						#Select j, iterate through all j in a cell k
 						for landuse2 in lu_codes:
-							j_m = grid_area.loc[m_grid][landuse2]
+							j_k = grid_area.loc[k_grid][landuse2]
 							J = row.loc[('AREA',landuse2)]
 
-							if I != 0 and J != 0 and numpy.isfinite(I) and numpy.isfinite(J) and numpy.isfinite(i_m) and numpy.isfinite(j_m):
+							if I != 0 and J != 0 and numpy.isfinite(I) and numpy.isfinite(J) and numpy.isfinite(i_m) and numpy.isfinite(j_k):
 								if global_prox[municipality][(landuse1,landuse2)] == None:
-									global_prox[municipality][(landuse1,landuse2)] = (i_m/I)*(j_m/J) * dist_dict[(m_grid,k_grid)]
+									global_prox[municipality][(landuse1,landuse2)] = (i_m/I)*(j_k/J) * dist_dict[(m_grid,k_grid)]
 								else:
-									global_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/J) * dist_dict[(m_grid,k_grid)]
+									global_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_k/J) * dist_dict[(m_grid,k_grid)]
 
 		#Make adjustments with average distance
 		for ij_pair in global_prox[municipality].keys():
