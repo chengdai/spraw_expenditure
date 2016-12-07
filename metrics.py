@@ -105,7 +105,7 @@ def local_proximity(file):
 
 		#Initialize all initial landuse local proximity to be None
 		#None is preserved for a pair of landuse type if one or more the landuse type(s) is missing
-		ij_pairs = [(i,j) for i in lu_codes for j in lu_codes]
+		ij_pairs = [(i,j) for i in lu_codes for j in lu_codes if j>=i]
 		local_prox[municipality] = dict.fromkeys(ij_pairs, None)
 
 		for m_grid in row['OBJECTID_1']['OBJECTID_1']: #For every grid in the municipality
@@ -118,14 +118,15 @@ def local_proximity(file):
 				
 				#Iterate through all landuse j (10,11,12,13,15,16,50) for pair (i,j)
 				for landuse2 in lu_codes: 
-					j_m = grid_area.loc[m_grid][landuse2] #Set j_m to be the amount of landuse j in cell m
+					if landuse2 >= landuse1:
+						j_m = grid_area.loc[m_grid][landuse2] #Set j_m to be the amount of landuse j in cell m
 
-					if numpy.isfinite(i_m) and local_prox[municipality][(landuse1,landuse2)] == None:
-						local_prox[municipality][(landuse1,landuse2)] = 0
+						if numpy.isfinite(i_m) and local_prox[municipality][(landuse1,landuse2)] == None:
+							local_prox[municipality][(landuse1,landuse2)] = 0
 
-					#Check for any non-finite (nan or infinite) numbers to exclude from calculation
-					if I != 0 and t_m != 0 and numpy.isfinite(I) and numpy.isfinite(t_m) and numpy.isfinite(i_m) and numpy.isfinite(j_m):
-						local_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/t_m)
+						#Check for any non-finite (nan or infinite) numbers to exclude from calculation
+						if I != 0 and t_m != 0 and numpy.isfinite(I) and numpy.isfinite(t_m) and numpy.isfinite(i_m) and numpy.isfinite(j_m):
+							local_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_m/t_m)
 
 		for ij_pair in local_prox[municipality].keys():
 			I = row.loc[('AREA',ij_pair[0])]
@@ -166,7 +167,7 @@ def global_proximity(file):
 
 		#Initialize an empty dictionary to keep track of all the global proximity results
 		grids = row['OBJECTID_1']['OBJECTID_1']
-		ij_pairs = [(i,j) for i in lu_codes for j in lu_codes]
+		ij_pairs = [(i,j) for i in lu_codes for j in lu_codes if j>=i]
 		global_prox[municipality] = dict.fromkeys(ij_pairs, None)
 
 		#Initialize the calculations for w_x
@@ -195,14 +196,15 @@ def global_proximity(file):
 
 						#Select j, iterate through all j in a cell k
 						for landuse2 in lu_codes:
-							j_k = grid_area.loc[k_grid][landuse2]
-							J = row.loc[('AREA',landuse2)]
+							if landuse2 >= landuse1:
+								j_k = grid_area.loc[k_grid][landuse2]
+								J = row.loc[('AREA',landuse2)]
 
-							if I != 0 and J != 0 and numpy.isfinite(I) and numpy.isfinite(J) and numpy.isfinite(i_m) and numpy.isfinite(j_k):
-								if global_prox[municipality][(landuse1,landuse2)] == None:
-									global_prox[municipality][(landuse1,landuse2)] = (i_m/I)*(j_k/J) * dist_dict[(m_grid,k_grid)]
-								else:
-									global_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_k/J) * dist_dict[(m_grid,k_grid)]
+								if I != 0 and J != 0 and numpy.isfinite(I) and numpy.isfinite(J) and numpy.isfinite(i_m) and numpy.isfinite(j_k):
+									if global_prox[municipality][(landuse1,landuse2)] == None:
+										global_prox[municipality][(landuse1,landuse2)] = (i_m/I)*(j_k/J) * dist_dict[(m_grid,k_grid)]
+									else:
+										global_prox[municipality][(landuse1,landuse2)] += (i_m/I)*(j_k/J) * dist_dict[(m_grid,k_grid)]
 
 		#Make adjustments with average distance
 		for ij_pair in global_prox[municipality].keys():
