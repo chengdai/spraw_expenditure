@@ -63,9 +63,9 @@ class Fragmentation(object):
 					mean_patch_sizes[muni][land_use] = None
 
 		mean_patch_size_table = pandas.DataFrame.from_dict(mean_patch_sizes, orient = 'index').sortlevel(axis=1)
-		#mean_patch_size_table.to_csv('Mean_Patch_Size_' + year + '.csv')
+		mean_patch_size_table.to_csv('Mean_Patch_Size_' + year + '.csv')
 
-		#return mean_patch_size_table
+		return mean_patch_size_table
 
 	def mean_perimeter_to_area(self):
 		'''
